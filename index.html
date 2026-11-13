@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OGI LAB — Ingénierie de Transformation Physique</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Space Grotesk', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        canvas: 'var(--bg-canvas)',
+                        surface: 'var(--bg-surface)',
+                        elevated: 'var(--bg-elevated)',
+                        borderline: 'var(--border-line)',
+                        muted: 'var(--text-muted)',
+                        ink: 'var(--text-primary)',
+                        accent: 'var(--accent-bg)',
+                        accentink: 'var(--accent-text)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-canvas: #09090b;
+            --bg-surface: #111114;
+            --bg-elevated: #18181c;
+            --border-line: #27272a;
+            --text-primary: #fafafa;
+            --text-muted: #a1a1aa;
+            --accent-bg: #fafafa;
+            --accent-text: #09090b;
+            --grid-line: rgba(255, 255, 255, 0.025);
+            --header-bg: rgba(9, 9, 11, 0.9);
+            --hover-border: #71717a;
+            --chart-track: #27272a;
+            --chart-s1: #fafafa;
+            --chart-s2: #a1a1aa;
+            --chart-s3: #52525b;
+        }
+
+        html.theme-light {
+            --bg-canvas: #f4f4f5;
+            --bg-surface: #ffffff;
+            --bg-elevated: #e4e4e7;
+            --border-line: #d4d4d8;
+            --text-primary: #09090b;
+            --text-muted: #52525b;
+            --accent-bg: #09090b;
+            --accent-text: #ffffff;
+            --grid-line: rgba(9, 9, 11, 0.045);
+            --header-bg: rgba(244, 244, 245, 0.9);
+            --hover-border: #18181b;
+            --chart-track: #e4e4e7;
+            --chart-s1: #09090b;
+            --chart-s2: #52525b;
+            --chart-s3: #a1a1aa;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            background-image:
+                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+            background-size: 48px 48px;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        .panel {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-line);
+            transition: background-color 0.25s ease, border-color 0.25s ease;
+        }
+
+        .option-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-line);
+            transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .option-card:hover {
+            border-color: var(--hover-border);
+            background-color: var(--bg-elevated);
+        }
+
+        .option-card.selected {
+            background-color: var(--accent-bg);
+            color: var(--accent-text);
+            border-color: var(--accent-bg);
+        }
+
+        .option-card.selected .sub-text {
+            color: var(--text-muted);
+        }
+
+        html:not(.theme-light) .option-card.selected .sub-text {
+            color: #52525b;
+        }
+
+        html.theme-light .option-card.selected .sub-text {
+            color: #d4d4d8;
+        }
+
+        .option-card.selected .tag-pill {
+            background-color: var(--accent-text);
+            color: var(--accent-bg);
+            border-color: var(--accent-text);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: var(--border-line);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-bg);
+            cursor: pointer;
+            border: 2px solid var(--bg-canvas);
+            box-shadow: 0 0 0 1px var(--accent-bg);
+            transition: transform 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.18);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-animate {
+            animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #09090b !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .panel {
+                background: #ffffff !important;
+                color: #09090b !important;
+                border: 1px solid #d4d4d8 !important;
+            }
+            .sub-text {
+                color: #3f3f46 !important;
+            }
+            .print-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-accent selection:text-accentink pb-14">
+
+    <header class="w-full border-b border-borderline backdrop-blur-sm sticky top-0 z-30 no-print" style="background-color: var(--header-bg);">
+        <div class="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+            <button type="button" onclick="resetApp()" class="flex items-center gap-3 text-left">
+                <span class="w-5 h-5 border border-ink flex items-center justify-center">
+                    <span class="w-2 h-2 bg-ink"></span>
+                </span>
+                <span class="font-display font-bold tracking-wider text-base uppercase">OGI LAB</span>
+            </button>
+
+            <div class="hidden md:flex items-center gap-6 font-mono text-[11px] text-muted tracking-widest uppercase">
+                <span id="header-status">SYSTÈME PRÊT</span>
+                <span class="text-borderline">/</span>
+                <span>PROTOCOLE BIOMÉTRIQUE 2D</span>
+            </div>
+
+            <div id="header-step-badge" class="hidden font-mono text-xs bg-elevated border border-borderline px-3 py-1 rounded">
+                MODULE <span id="header-step-num" class="text-ink font-bold">01</span> / 06
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-8 py-10 sm:py-14">
+
+        <section id="view-hero" class="step-animate">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end pb-12 border-b border-borderline">
+                <div class="lg:col-span-8">
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-borderline bg-surface font-mono text-[11px] text-muted uppercase tracking-widest mb-6">
+                        <span class="w-1.5 h-1.5 rounded-full bg-ink"></span>
+                        INGÉNIERIE PHYSIOLOGIQUE & ADAPTATION CLINIQUE
+                    </div>
+                    <h1 class="font-display font-bold text-4xl sm:text-6xl tracking-tight leading-[1.02] uppercase">
+                        CALIBRAGE DE<br>
+                        <span class="text-muted">TRANSFORMATION</span><br>
+                        PHYSIQUE.
+                    </h1>
+                </div>
+                <div class="lg:col-span-4">
+                    <p class="text-muted text-sm sm:text-base leading-relaxed mb-4">
+                        Un protocole conçu autour de votre réalité : biométrie, anatomie osseuse, rythme professionnel, budget, matériel et adaptations médicales ou handicaps analysés par intelligence artificielle.
+                    </p>
+                    <div class="font-mono text-xs text-muted">
+                        26 PARAMÈTRES CROISÉS • EXPORT PDF & TEXTE
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10">
+                <div class="flex items-center justify-between mb-5">
+                    <span class="font-mono text-xs uppercase tracking-widest text-muted">00 // CHOISISSEZ VOTRE OBJECTIF PRIORITAIRE</span>
+                    <span class="font-mono text-xs text-muted hidden sm:inline">SÉLECTION DIRECTE</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button type="button" onclick="startWithGoal('bulk')" class="option-card text-left p-6 rounded-xl flex flex-col justify-between min-h-[230px] group">
+                        <div>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="tag-pill font-mono text-[11px] px-2 py-0.5 rounded border border-borderline text-muted">OBJ // 01</span>
+                                <span class="font-mono text-sm text-muted group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <h2 class="font-display font-bold text-xl uppercase tracking-tight mb-2">Prise de Masse Sèche</h2>
+                            <p class="sub-text text-muted text-sm leading-relaxed">Hypertrophie musculaire maximale avec surplus calorique maîtrisé pour limiter le stockage adipeux.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-borderline/70 flex justify-between font-mono text-[11px] sub-text text-muted">
+                            <span>SURPLUS +280 KCAL</span>
+                            <span>HYPERTROPHIE</span>
+                        </div>
+                    </button>
+
+                    <button type="button" onclick="startWithGoal('cut')" class="option-card text-left p-6 rounded-xl flex flex-col justify-between min-h-[230px] group">
+                        <div>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="tag-pill font-mono text-[11px] px-2 py-0.5 rounded border border-borderline text-muted">OBJ // 02</span>
+                                <span class="font-mono text-sm text-muted group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <h2 class="font-display font-bold text-xl uppercase tracking-tight mb-2">Sèche & Définition</h2>
+                            <p class="sub-text text-muted text-sm leading-relaxed">Perte de masse grasse ciblée et préservation stricte du tissu musculaire grâce à un apport protéique élevé.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-borderline/70 flex justify-between font-mono text-[11px] sub-text text-muted">
+                            <span>DÉFICIT -450 KCAL</span>
+                            <span>DÉFINITION</span>
+                        </div>
+                    </button>
+
+                    <button type="button" onclick="startWithGoal('recomp')" class="option-card text-left p-6 rounded-xl flex flex-col justify-between min-h-[230px] group">
+                        <div>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="tag-pill font-mono text-[11px] px-2 py-0.5 rounded border border-borderline text-muted">OBJ // 03</span>
+                                <span class="font-mono text-sm text-muted group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <h2 class="font-display font-bold text-xl uppercase tracking-tight mb-2">Recomposition Corporelle</h2>
+                            <p class="sub-text text-muted text-sm leading-relaxed">Gain de muscle et réduction simultanée du taux de gras via cyclage énergétique et tension mécanique.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-borderline/70 flex justify-between font-mono text-[11px] sub-text text-muted">
+                            <span>ISO-CALORIQUE</span>
+                            <span>ÉQUILIBRE</span>
+                        </div>
+                    </button>
+
+                    <button type="button" onclick="startWithGoal('strength')" class="option-card text-left p-6 rounded-xl flex flex-col justify-between min-h-[230px] group">
+                        <div>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="tag-pill font-mono text-[11px] px-2 py-0.5 rounded border border-borderline text-muted">OBJ // 04</span>
+                                <span class="font-mono text-sm text-muted group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <h2 class="font-display font-bold text-xl uppercase tracking-tight mb-2">Performance & Force</h2>
+                            <p class="sub-text text-muted text-sm leading-relaxed">Développement de la force pure, explosivité neuromusculaire et capacité athlétique globale.</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-borderline/70 flex justify-between font-mono text-[11px] sub-text text-muted">
+                            <span>SURPLUS +180 KCAL</span>
+                            <span>FORCE PURE</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-wizard" class="hidden max-w-4xl mx-auto w-full">
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-3">
+                    <div>
+                        <span id="wizard-tag" class="font-mono text-xs text-muted uppercase tracking-widest">MODULE 01 // BIOMÉTRIE</span>
+                        <h2 id="wizard-title" class="font-display font-bold text-2xl sm:text-3xl uppercase mt-1">Mensurations & Composition</h2>
+                    </div>
+                    <span id="wizard-pct" class="font-mono text-sm font-bold">17%</span>
+                </div>
+                <div class="w-full h-1 bg-elevated rounded-full overflow-hidden">
+                    <div id="wizard-progress" class="h-full bg-ink transition-all duration-300" style="width: 17%"></div>
+                </div>
+            </div>
+
+            <div class="panel rounded-2xl p-6 sm:p-10">
+
+                <div id="step-1" class="wizard-step space-y-8 step-animate">
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">01. Sexe Biologique</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button type="button" onclick="selectOption('sex', 'male', this)" class="opt-sex option-card selected p-4 rounded-xl text-left flex items-center justify-between">
+                                <span class="font-medium">Homme</span>
+                                <span class="font-mono text-xs sub-text text-muted">M // XY</span>
+                            </button>
+                            <button type="button" onclick="selectOption('sex', 'female', this)" class="opt-sex option-card p-4 rounded-xl text-left flex items-center justify-between">
+                                <span class="font-medium">Femme</span>
+                                <span class="font-mono text-xs sub-text text-muted">F // XX</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-mono text-xs uppercase text-muted">02. Âge</label>
+                                <span class="font-mono text-lg font-bold"><span id="disp-age">26</span> <span class="text-xs text-muted font-normal">ANS</span></span>
+                            </div>
+                            <input type="range" id="in-age" min="16" max="80" value="26" oninput="updateRange('age', this.value)">
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-mono text-xs uppercase text-muted">03. Taille</label>
+                                <span class="font-mono text-lg font-bold"><span id="disp-height">178</span> <span class="text-xs text-muted font-normal">CM</span></span>
+                            </div>
+                            <input type="range" id="in-height" min="135" max="215" value="178" oninput="updateRange('height', this.value)">
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-mono text-xs uppercase text-muted">04. Poids Actuel</label>
+                                <span class="font-mono text-lg font-bold"><span id="disp-weight">76</span> <span class="text-xs text-muted font-normal">KG</span></span>
+                            </div>
+                            <input type="range" id="in-weight" min="38" max="170" value="76" oninput="updateRange('weight', this.value)">
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-mono text-xs uppercase text-muted">05. Poids Cible</label>
+                                <span class="font-mono text-lg font-bold"><span id="disp-targetWeight">80</span> <span class="text-xs text-muted font-normal">KG</span></span>
+                            </div>
+                            <input type="range" id="in-targetWeight" min="38" max="170" value="80" oninput="updateRange('targetWeight', this.value)">
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-mono text-xs uppercase text-muted">06. Tour de Taille au Nombril (Indicateur de graisse viscérale)</label>
+                            <span class="font-mono text-lg font-bold"><span id="disp-waist">81</span> <span class="text-xs text-muted font-normal">CM</span></span>
+                        </div>
+                        <input type="range" id="in-waist" min="55" max="150" value="81" oninput="updateRange('waist', this.value)">
+                    </div>
+
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">07. Estimation Visuelle de Masse Grasse</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <button type="button" onclick="selectOption('bodyfat', 'low', this)" class="opt-bodyfat option-card p-3.5 rounded-xl text-left">
+                                <div class="font-mono text-sm font-bold mb-1">8% — 12%</div>
+                                <div class="sub-text text-xs text-muted">Très sec, abdos dessinés, vascularisation nette</div>
+                            </button>
+                            <button type="button" onclick="selectOption('bodyfat', 'athletic', this)" class="opt-bodyfat option-card selected p-3.5 rounded-xl text-left">
+                                <div class="font-mono text-sm font-bold mb-1">13% — 17%</div>
+                                <div class="sub-text text-xs text-muted">Athlétique, abdos visibles sous bonne lumière</div>
+                            </button>
+                            <button type="button" onclick="selectOption('bodyfat', 'average', this)" class="opt-bodyfat option-card p-3.5 rounded-xl text-left">
+                                <div class="font-mono text-sm font-bold mb-1">18% — 24%</div>
+                                <div class="sub-text text-xs text-muted">Standard, léger coussin adipeux abdominal</div>
+                            </button>
+                            <button type="button" onclick="selectOption('bodyfat', 'high', this)" class="opt-bodyfat option-card p-3.5 rounded-xl text-left">
+                                <div class="font-mono text-sm font-bold mb-1">25% +</div>
+                                <div class="sub-text text-xs text-muted">Surplus adipeux marqué sur le tronc</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-2" class="wizard-step hidden space-y-8 step-animate">
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">08. Expérience en Entraînement Structuré</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <button type="button" onclick="selectOption('experience', 'beginner', this)" class="opt-experience option-card p-4 rounded-xl text-left">
+                                <div class="font-mono text-xs sub-text text-muted mb-1">0 — 1 AN</div>
+                                <div class="font-bold mb-1">Débutant</div>
+                                <p class="sub-text text-xs text-muted">Progression linéaire rapide, apprentissage des gestes.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('experience', 'intermediate', this)" class="opt-experience option-card selected p-4 rounded-xl text-left">
+                                <div class="font-mono text-xs sub-text text-muted mb-1">1 — 3 ANS</div>
+                                <div class="font-bold mb-1">Intermédiaire</div>
+                                <p class="sub-text text-xs text-muted">Maîtrise technique, besoin de volume calibré.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('experience', 'advanced', this)" class="opt-experience option-card p-4 rounded-xl text-left">
+                                <div class="font-mono text-xs sub-text text-muted mb-1">3+ ANS</div>
+                                <div class="font-bold mb-1">Avancé</div>
+                                <p class="sub-text text-xs text-muted">Gestion fine de la fatigue nerveuse et périodisation.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">09. Structure Osseuse & Leviers Anatomiques</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <button type="button" onclick="selectOption('anatomy', 'long', this)" class="opt-anatomy option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Segments Longs / Clavicules Étroites</div>
+                                <p class="sub-text text-xs text-muted">Bras/fémurs longs, amplitude importante sur les mouvements de base.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('anatomy', 'balanced', this)" class="opt-anatomy option-card selected p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Proportions Équilibrées</div>
+                                <p class="sub-text text-xs text-muted">Leviers standards, bonne polyvalence mécanique.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('anatomy', 'compact', this)" class="opt-anatomy option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Cage Large / Segments Courts</div>
+                                <p class="sub-text text-xs text-muted">Leviers favorables à la force pure, forte densité.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">10. Groupes Musculaires Prioritaires (Max 3 choix)</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Pectoraux', this, 3)" class="multi-weakPoints option-card selected p-3 rounded-xl text-xs font-medium text-center">Pectoraux</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Dos & Trapèzes', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Dos & Trapèzes</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Épaules 3D', this, 3)" class="multi-weakPoints option-card selected p-3 rounded-xl text-xs font-medium text-center">Épaules 3D</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Bras (Biceps/Triceps)', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Bras</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Quadriceps & Ischios', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Jambes</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Fessiers & Chaîne Post.', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Fessiers</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Sangle Abdominale', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Abdominaux</button>
+                            <button type="button" onclick="toggleMultiOption('weakPoints', 'Harmonie Globale', this, 3)" class="multi-weakPoints option-card p-3 rounded-xl text-xs font-medium text-center">Harmonie Globale</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-3" class="wizard-step hidden space-y-8 step-animate">
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">11. Situation Professionnelle & Rythme Journalier</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <button type="button" onclick="selectOption('job', 'student', this)" class="opt-job option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Étudiant</div>
+                                <p class="sub-text text-xs text-muted">Horaires variables, budget optimisé, assis en cours.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('job', 'desk', this)" class="opt-job option-card selected p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Bureau / Télétravail</div>
+                                <p class="sub-text text-xs text-muted">Posture assise prolongée, NEAT faible (&lt;5000 pas).</p>
+                            </button>
+                            <button type="button" onclick="selectOption('job', 'physical', this)" class="opt-job option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Travail Physique / Debout</div>
+                                <p class="sub-text text-xs text-muted">Dépense calorique élevée, fatigue articulaire/nerveuse.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('job', 'shift', this)" class="opt-job option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Horaires Décalés / Nuit</div>
+                                <p class="sub-text text-xs text-muted">Rythme circadien décalé, fenêtre de repas atypique.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="p-4 rounded-xl border border-borderline bg-canvas/50">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-mono text-xs uppercase text-muted">12. Sommeil Moyen par Nuit</label>
+                                <span class="font-mono text-lg font-bold"><span id="disp-sleep">7.5</span> <span class="text-xs text-muted font-normal">H</span></span>
+                            </div>
+                            <input type="range" id="in-sleep" min="4.5" max="10" step="0.5" value="7.5" oninput="updateRange('sleep', this.value)">
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">13. Charge Mentale & Stress Quotidien</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="selectOption('stress', 'low', this)" class="opt-stress option-card p-3.5 rounded-xl text-center text-xs font-medium">Faible</button>
+                                <button type="button" onclick="selectOption('stress', 'moderate', this)" class="opt-stress option-card selected p-3.5 rounded-xl text-center text-xs font-medium">Modéré</button>
+                                <button type="button" onclick="selectOption('stress', 'high', this)" class="opt-stress option-card p-3.5 rounded-xl text-center text-xs font-medium">Élevé</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">14. Budget Alimentaire</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="selectOption('budget', 'tight', this)" class="opt-budget option-card p-3 rounded-xl text-center text-xs">Serré</button>
+                                <button type="button" onclick="selectOption('budget', 'medium', this)" class="opt-budget option-card selected p-3 rounded-xl text-center text-xs">Moyen</button>
+                                <button type="button" onclick="selectOption('budget', 'high', this)" class="opt-budget option-card p-3 rounded-xl text-center text-xs">Confort</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">15. Temps Cuisine / Jour</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="selectOption('cookTime', 'fast', this)" class="opt-cookTime option-card p-3 rounded-xl text-center text-xs">&lt; 15 min</button>
+                                <button type="button" onclick="selectOption('cookTime', 'normal', this)" class="opt-cookTime option-card selected p-3 rounded-xl text-center text-xs">30 min</button>
+                                <button type="button" onclick="selectOption('cookTime', 'batch', this)" class="opt-cookTime option-card p-3 rounded-xl text-center text-xs">Meal Prep</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">16. Repas Extérieurs / Sem.</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="selectOption('social', 'rare', this)" class="opt-social option-card selected p-3 rounded-xl text-center text-xs">0 — 1</button>
+                                <button type="button" onclick="selectOption('social', 'moderate', this)" class="opt-social option-card p-3 rounded-xl text-center text-xs">2 — 3</button>
+                                <button type="button" onclick="selectOption('social', 'frequent', this)" class="opt-social option-card p-3 rounded-xl text-center text-xs">4+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-4" class="wizard-step hidden space-y-8 step-animate">
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">17. Fréquence d'Entraînement Hebdomadaire</label>
+                        <div class="grid grid-cols-5 gap-3">
+                            <button type="button" onclick="selectOption('daysPerWeek', 2, this)" class="opt-daysPerWeek option-card p-4 rounded-xl text-center">
+                                <div class="font-display font-bold text-xl">2J</div>
+                                <div class="font-mono text-[10px] sub-text text-muted mt-1">FULL BODY</div>
+                            </button>
+                            <button type="button" onclick="selectOption('daysPerWeek', 3, this)" class="opt-daysPerWeek option-card p-4 rounded-xl text-center">
+                                <div class="font-display font-bold text-xl">3J</div>
+                                <div class="font-mono text-[10px] sub-text text-muted mt-1">FULL / PPL</div>
+                            </button>
+                            <button type="button" onclick="selectOption('daysPerWeek', 4, this)" class="opt-daysPerWeek option-card selected p-4 rounded-xl text-center">
+                                <div class="font-display font-bold text-xl">4J</div>
+                                <div class="font-mono text-[10px] sub-text text-muted mt-1">UPPER/LOWER</div>
+                            </button>
+                            <button type="button" onclick="selectOption('daysPerWeek', 5, this)" class="opt-daysPerWeek option-card p-4 rounded-xl text-center">
+                                <div class="font-display font-bold text-xl">5J</div>
+                                <div class="font-mono text-[10px] sub-text text-muted mt-1">PPL / UL</div>
+                            </button>
+                            <button type="button" onclick="selectOption('daysPerWeek', 6, this)" class="opt-daysPerWeek option-card p-4 rounded-xl text-center">
+                                <div class="font-display font-bold text-xl">6J</div>
+                                <div class="font-mono text-[10px] sub-text text-muted mt-1">PPL x2</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">18. Matériel & Environnement Disponible</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <button type="button" onclick="selectOption('equipment', 'gym', this)" class="opt-equipment option-card selected p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Salle Complète</div>
+                                <p class="sub-text text-xs text-muted">Machines guidées, poulies, barres et haltères.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('equipment', 'homegym', this)" class="opt-equipment option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Home Gym</div>
+                                <p class="sub-text text-xs text-muted">Banc, haltères réglables, barre de traction.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('equipment', 'bands', this)" class="opt-equipment option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Élastiques / Léger</div>
+                                <p class="sub-text text-xs text-muted">Bandes de résistance, kettlebell ou petit matériel.</p>
+                            </button>
+                            <button type="button" onclick="selectOption('equipment', 'bodyweight', this)" class="opt-equipment option-card p-4 rounded-xl text-left">
+                                <div class="font-bold text-sm mb-1">Poids du Corps</div>
+                                <p class="sub-text text-xs text-muted">Sans matériel ou barre fixe uniquement.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">19. Durée Max par Séance</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button type="button" onclick="selectOption('duration', '30 min', this)" class="opt-duration option-card p-3 rounded-xl text-center font-mono text-xs">30M</button>
+                                <button type="button" onclick="selectOption('duration', '45 min', this)" class="opt-duration option-card p-3 rounded-xl text-center font-mono text-xs">45M</button>
+                                <button type="button" onclick="selectOption('duration', '60 min', this)" class="opt-duration option-card selected p-3 rounded-xl text-center font-mono text-xs">60M</button>
+                                <button type="button" onclick="selectOption('duration', '75+ min', this)" class="opt-duration option-card p-3 rounded-xl text-center font-mono text-xs">75M+</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">20. Sensibilités Articulaires</label>
+                            <select id="in-injuries" class="w-full bg-canvas border border-borderline rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-ink">
+                                <option value="none">Aucune sensibilité articulaire</option>
+                                <option value="shoulders">Épaules / Coiffe des rotateurs</option>
+                                <option value="lowerback">Bas du dos / Lombaires</option>
+                                <option value="knees">Genoux / Tendons rotuliens</option>
+                                <option value="wrists">Poignets / Coudes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-5" class="wizard-step hidden space-y-8 step-animate">
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">21. Régime Alimentaire</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                            <button type="button" onclick="selectOption('diet', 'omnivore', this)" class="opt-diet option-card selected p-3.5 rounded-xl text-center text-xs font-medium">Omnivore</button>
+                            <button type="button" onclick="selectOption('diet', 'halal_kosher', this)" class="opt-diet option-card p-3.5 rounded-xl text-center text-xs font-medium">Halal / Casher</button>
+                            <button type="button" onclick="selectOption('diet', 'pescatarian', this)" class="opt-diet option-card p-3.5 rounded-xl text-center text-xs font-medium">Pescétarien</button>
+                            <button type="button" onclick="selectOption('diet', 'vegetarian', this)" class="opt-diet option-card p-3.5 rounded-xl text-center text-xs font-medium">Végétarien</button>
+                            <button type="button" onclick="selectOption('diet', 'vegan', this)" class="opt-diet option-card p-3.5 rounded-xl text-center text-xs font-medium">100% Végétal</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">22. Nombre de Repas par Jour</label>
+                        <div class="grid grid-cols-4 gap-3">
+                            <button type="button" onclick="selectOption('meals', 2, this)" class="opt-meals option-card p-3.5 rounded-xl text-center">
+                                <div class="font-display font-bold text-lg">2</div>
+                                <div class="text-[11px] sub-text text-muted">Jeûne 16/8</div>
+                            </button>
+                            <button type="button" onclick="selectOption('meals', 3, this)" class="opt-meals option-card p-3.5 rounded-xl text-center">
+                                <div class="font-display font-bold text-lg">3</div>
+                                <div class="text-[11px] sub-text text-muted">Classique</div>
+                            </button>
+                            <button type="button" onclick="selectOption('meals', 4, this)" class="opt-meals option-card selected p-3.5 rounded-xl text-center">
+                                <div class="font-display font-bold text-lg">4</div>
+                                <div class="text-[11px] sub-text text-muted">3 + Collation</div>
+                            </button>
+                            <button type="button" onclick="selectOption('meals', 5, this)" class="opt-meals option-card p-3.5 rounded-xl text-center">
+                                <div class="font-display font-bold text-lg">5</div>
+                                <div class="text-[11px] sub-text text-muted">Fractionné</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">23. Allergies / Intolérances</label>
+                            <select id="in-intolerance" class="w-full bg-canvas border border-borderline rounded-xl px-3.5 py-3 text-xs sm:text-sm text-ink focus:outline-none focus:border-ink">
+                                <option value="none">Aucune allergie</option>
+                                <option value="lactose">Sans Lactose</option>
+                                <option value="gluten">Sans Gluten</option>
+                                <option value="nuts">Sans Fruits à coque</option>
+                                <option value="eggs">Sans Œufs</option>
+                                <option value="both">Sans Lactose ni Gluten</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">24. Appétit & Digestion</label>
+                            <select id="in-digestion" class="w-full bg-canvas border border-borderline rounded-xl px-3.5 py-3 text-xs sm:text-sm text-ink focus:outline-none focus:border-ink">
+                                <option value="normal">Digestion fluide / Appétit normal</option>
+                                <option value="low_appetite">Petit appétit (besoin densité calorique)</option>
+                                <option value="high_appetite">Gros appétit (besoin volume alimentaire)</option>
+                                <option value="sensitive">Intestin irritable / Sensible</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block font-mono text-xs uppercase tracking-wider text-muted mb-3">25. Supplémentation</label>
+                            <select id="in-supplements" class="w-full bg-canvas border border-borderline rounded-xl px-3.5 py-3 text-xs sm:text-sm text-ink focus:outline-none focus:border-ink">
+                                <option value="essential">Essentiels (Whey, Créatine, Oméga-3)</option>
+                                <option value="performance">Complète (+ Magnésium, Vit. D)</option>
+                                <option value="minimal">100% Solide (Aucun complément)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-6" class="wizard-step hidden space-y-6 step-animate">
+                    <div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <label for="in-customNotes" class="font-mono text-xs uppercase tracking-wider text-ink font-semibold">
+                                26. Précisions Médicales, Handicap ou Contraintes Personnelles (Champ Libre IA)
+                            </label>
+                            <span class="font-mono text-[11px] px-2.5 py-0.5 rounded bg-elevated border border-borderline text-muted">LECTURE SÉMANTIQUE ACTIVE</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-muted mb-4 leading-relaxed">
+                            Indiquez librement tout élément particulier : <span class="text-ink font-medium">handicap moteur (fauteuil roulant, amputation, hémiplégie), pathologie (scoliose, hernie discale, diabète, hypothyroïdie, asthme, hypertension), post-partum ou contrainte spécifique</span>. L'IA extraira ces facteurs pour adapter les exercices et la nutrition.
+                        </p>
+
+                        <textarea id="in-customNotes" rows="4" placeholder="Exemple : Je suis en fauteuil roulant manuel et j'ai une légère sensibilité à l'épaule gauche, je veux maximiser le haut du corps..." class="w-full bg-canvas border border-borderline rounded-xl p-4 text-sm text-ink placeholder-muted focus:outline-none focus:border-ink leading-relaxed"></textarea>
+
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <span class="font-mono text-[11px] text-muted">EXEMPLES RAPIDES :</span>
+                            <button type="button" onclick="fillSampleNote('Je me déplace en fauteuil roulant, je veux un programme 100% adapté haut du corps avec protection des épaules.')" class="font-mono text-[11px] px-2.5 py-1 rounded border border-borderline bg-canvas hover:border-ink text-muted hover:text-ink transition-colors">
+                                + Fauteuil roulant
+                            </button>
+                            <button type="button" onclick="fillSampleNote('Hernie discale L4-L5 et scoliose : interdiction de compression axiale sur la colonne vertébrale.')" class="font-mono text-[11px] px-2.5 py-1 rounded border border-borderline bg-canvas hover:border-ink text-muted hover:text-ink transition-colors">
+                                + Hernie / Scoliose
+                            </button>
+                            <button type="button" onclick="fillSampleNote('Diabète de type 2 et asthme à l\'effort : besoin de glucides à index glycémique bas et temps de repos allongés.')" class="font-mono text-[11px] px-2.5 py-1 rounded border border-borderline bg-canvas hover:border-ink text-muted hover:text-ink transition-colors">
+                                + Diabète & Asthme
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-borderline">
+                        <button type="button" id="btn-analyze-ai" onclick="analyzeCustomNotesWithAI(false)" class="px-5 py-2.5 rounded-xl border border-borderline bg-elevated hover:bg-accent hover:text-accentink font-mono text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                            <span id="ai-btn-spinner" class="hidden w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                            <span id="ai-btn-text">Analyser mes précisions avec l'IA</span>
+                        </button>
+                        <span id="ai-status-msg" class="font-mono text-xs text-muted">Les facteurs détectés s'ajouteront ci-dessous.</span>
+                    </div>
+
+                    <div id="ai-extracted-box" class="hidden p-4 rounded-xl bg-canvas border border-borderline space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono text-xs text-ink font-bold uppercase">Paramètres Spécifiques Ajoutés au Moteur :</span>
+                            <button type="button" onclick="clearExtractedConstraints()" class="font-mono text-[11px] text-muted hover:text-ink underline">Effacer</button>
+                        </div>
+                        <div id="ai-tags-container" class="flex flex-wrap gap-2"></div>
+                        <p id="ai-summary-note" class="text-xs text-muted leading-relaxed"></p>
+                    </div>
+                </div>
+
+                <div class="mt-10 pt-6 border-t border-borderline flex items-center justify-between">
+                    <button type="button" onclick="prevStep()" class="px-5 py-3 rounded-xl border border-borderline text-xs sm:text-sm font-medium text-muted hover:text-ink hover:border-ink transition-colors">
+                        ← Précédent
+                    </button>
+
+                    <button type="button" id="btn-next" onclick="nextStep()" class="px-7 py-3 rounded-xl bg-accent text-accentink font-semibold text-xs sm:text-sm tracking-wide opacity-95 hover:opacity-100 transition-all flex items-center gap-2">
+                        <span id="btn-next-text">Continuer</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-compiling" class="hidden max-w-xl mx-auto w-full py-16">
+            <div class="panel rounded-2xl p-8 sm:p-10 text-center">
+                <div class="w-12 h-12 mx-auto mb-6 border border-borderline rounded-full flex items-center justify-center">
+                    <div class="w-6 h-6 border-2 border-ink border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <h2 class="font-display font-bold text-2xl uppercase mb-2">Génération du Protocole</h2>
+                <p id="compile-step-label" class="font-mono text-xs text-muted uppercase tracking-wider mb-6">SYNTHÈSE DES 26 PARAMÈTRES...</p>
+                <div class="w-full h-1 bg-elevated rounded-full overflow-hidden">
+                    <div id="compile-bar" class="h-full bg-ink transition-all duration-300" style="width: 15%"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-results" class="hidden space-y-10 step-animate">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-borderline pb-8">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-accent text-accentink font-mono text-[11px] font-bold uppercase mb-3">
+                        DOSSIER BIOMÉTRIQUE VALIDÉ
+                    </div>
+                    <h1 id="res-title" class="font-display font-bold text-3xl sm:text-5xl uppercase tracking-tight">
+                        PROTOCOLE PRISE DE MASSE SÈCHE
+                    </h1>
+                    <p id="res-subtitle" class="font-mono text-xs sm:text-sm text-muted mt-2">
+                        HOMME • 26 ANS • 178 CM • 76 KG → CIBLE 80 KG
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-3 no-print">
+                    <button type="button" onclick="copyReport()" class="px-4 py-2.5 rounded-xl border border-borderline bg-surface hover:bg-elevated font-mono text-xs uppercase tracking-wider transition-colors">
+                        <span id="copy-btn-label">Copier le Bilan</span>
+                    </button>
+                    <button type="button" onclick="window.print()" class="px-4 py-2.5 rounded-xl bg-accent text-accentink opacity-95 hover:opacity-100 font-mono text-xs font-bold uppercase tracking-wider transition-colors">
+                        Imprimer / PDF
+                    </button>
+                    <button type="button" onclick="resetApp()" class="px-4 py-2.5 rounded-xl border border-borderline text-muted hover:text-ink font-mono text-xs uppercase">
+                        Nouveau Bilan
+                    </button>
+                </div>
+            </div>
+
+            <div id="res-adaptations-banner" class="panel rounded-2xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <span class="font-mono text-xs text-ink font-bold uppercase">00 // PARAMÈTRES DE VIE & ADAPTATIONS INTÉGRÉES</span>
+                    <span id="res-life-context" class="font-mono text-xs text-muted">BUREAU • BUDGET MOYEN • CUISINE 30 MIN</span>
+                </div>
+                <div id="res-active-constraints" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div>
+                <h2 class="font-mono text-xs uppercase tracking-widest text-muted mb-4">01 // ARCHITECTURE ÉNERGÉTIQUE & MACRONUTRIMENTS</h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div class="panel p-5 rounded-2xl">
+                        <div class="font-mono text-[11px] text-muted uppercase mb-1">Métabolisme Basal (BMR)</div>
+                        <div class="font-display font-bold text-2xl sm:text-3xl" id="res-bmr">1 780 kcal</div>
+                        <div class="text-xs sub-text text-muted mt-1">Dépense vitale au repos</div>
+                    </div>
+                    <div class="panel p-5 rounded-2xl">
+                        <div class="font-mono text-[11px] text-muted uppercase mb-1">Dépense Totale (TDEE)</div>
+                        <div class="font-display font-bold text-2xl sm:text-3xl" id="res-tdee">2 450 kcal</div>
+                        <div class="text-xs sub-text text-muted mt-1">Métier + NEAT + Séances</div>
+                    </div>
+                    <div class="panel p-5 rounded-2xl border-ink/50 bg-elevated">
+                        <div class="font-mono text-[11px] text-ink font-bold uppercase mb-1">Objectif Calorique</div>
+                        <div class="font-display font-bold text-2xl sm:text-3xl text-ink" id="res-target">2 730 kcal</div>
+                        <div class="text-xs text-muted mt-1" id="res-delta">+280 kcal / jour</div>
+                    </div>
+                    <div class="panel p-5 rounded-2xl">
+                        <div class="font-mono text-[11px] text-muted uppercase mb-1">Hydratation & Horizon</div>
+                        <div class="font-display font-bold text-2xl sm:text-3xl" id="res-water">3.1 L/j</div>
+                        <div class="text-xs sub-text text-muted mt-1" id="res-horizon">Durée estimée : 12 sem.</div>
+                    </div>
+                </div>
+
+                <div class="panel p-6 sm:p-8 rounded-2xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    <div class="lg:col-span-4 flex flex-col items-center justify-center">
+                        <svg id="macro-donut-svg" viewBox="0 0 160 160" class="w-44 h-44"></svg>
+                        <div class="font-mono text-[11px] text-muted uppercase mt-3 text-center">RÉPARTITION CALORIQUE 2D</div>
+                    </div>
+
+                    <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="p-5 rounded-xl bg-canvas border border-borderline">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-mono text-xs uppercase text-muted">Protéines</span>
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--chart-s1);"></span>
+                            </div>
+                            <div class="font-display font-bold text-3xl mb-1" id="res-prot-g">160g</div>
+                            <div class="font-mono text-xs text-muted" id="res-prot-meta">2.1 g/kg • 640 kcal</div>
+                        </div>
+
+                        <div class="p-5 rounded-xl bg-canvas border border-borderline">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-mono text-xs uppercase text-muted">Glucides</span>
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--chart-s2);"></span>
+                            </div>
+                            <div class="font-display font-bold text-3xl mb-1" id="res-carb-g">355g</div>
+                            <div class="font-mono text-xs text-muted" id="res-carb-meta">4.7 g/kg • 1420 kcal</div>
+                        </div>
+
+                        <div class="p-5 rounded-xl bg-canvas border border-borderline">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-mono text-xs uppercase text-muted">Lipides</span>
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--chart-s3);"></span>
+                            </div>
+                            <div class="font-display font-bold text-3xl mb-1" id="res-fat-g">74g</div>
+                            <div class="font-mono text-xs text-muted" id="res-fat-meta">0.95 g/kg • 666 kcal</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="print-break">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-4 gap-2">
+                    <div>
+                        <h2 class="font-mono text-xs uppercase tracking-widest text-muted">02 // PROGRAMMATION BIOMÉCANIQUE ADAPTÉE</h2>
+                        <h3 id="res-split-title" class="font-display font-bold text-2xl uppercase mt-1">SPLIT UPPER / LOWER (4 JOURS)</h3>
+                    </div>
+                    <span id="res-focus-badge" class="font-mono text-xs px-3 py-1.5 rounded bg-surface border border-borderline text-muted">
+                        PRIORITÉS : PECTORAUX, ÉPAULES 3D
+                    </span>
+                </div>
+
+                <div id="res-workouts" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break">
+                <div class="lg:col-span-2 panel p-6 sm:p-8 rounded-2xl">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+                        <div>
+                            <h2 class="font-mono text-xs uppercase tracking-widest text-muted">03 // PLAN ALIMENTAIRE CALIBRÉ</h2>
+                            <h3 id="res-meals-heading" class="font-display font-bold text-xl uppercase mt-1">4 Repas Journaliers</h3>
+                        </div>
+                        <span id="res-diet-tag" class="font-mono text-xs px-2.5 py-1 rounded border border-borderline uppercase">OMNIVORE</span>
+                    </div>
+                    <div id="res-meals" class="space-y-4"></div>
+                </div>
+
+                <div class="panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between space-y-6">
+                    <div>
+                        <h2 class="font-mono text-xs uppercase tracking-widest text-muted">04 // RÉCUPÉRATION & SUPPLÉMENTS</h2>
+                        <h3 class="font-display font-bold text-xl uppercase mt-1 mb-5">Optimisation Clinique</h3>
+                        <div id="res-supps" class="space-y-4"></div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-canvas border border-borderline">
+                        <div class="font-mono text-xs text-ink font-bold uppercase mb-1">Protocole de Progression</div>
+                        <p id="res-progression" class="text-xs sub-text text-muted leading-relaxed">
+                            Validez le haut de la fourchette de répétitions avec 1 à 2 répétitions en réserve avant d'augmenter la charge de 2.5%.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="border-t border-borderline py-6 px-4 sm:px-8 no-print">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 font-mono text-[11px] text-muted">
+            <span>OGI LAB — INGÉNIERIE DE TRANSFORMATION PHYSIQUE</span>
+            <span>ÉDITION MONOCHROME 2D • ANALYSE CONTEXTUELLE</span>
+        </div>
+    </footer>
+
+    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 no-print">
+        <div class="flex items-center gap-1 p-1 rounded-full bg-surface border border-borderline shadow-lg backdrop-blur-md">
+            <button type="button" id="btn-theme-dark" onclick="setMonochromeTheme('dark')" class="px-3.5 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider transition-all bg-accent text-accentink font-bold flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-current"></span>
+                <span>Noir Carbone</span>
+            </button>
+            <button type="button" id="btn-theme-light" onclick="setMonochromeTheme('light')" class="px-3.5 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider transition-all text-muted hover:text-ink flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full border border-current bg-white"></span>
+                <span>Blanc Papier</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            goal: 'bulk',
+            sex: 'male',
+            age: 26,
+            height: 178,
+            weight: 76,
+            targetWeight: 80,
+            waist: 81,
+            bodyfat: 'athletic',
+            experience: 'intermediate',
+            anatomy: 'balanced',
+            weakPoints: ['Pectoraux', 'Épaules 3D'],
+            job: 'desk',
+            sleep: 7.5,
+            stress: 'moderate',
+            budget: 'medium',
+            cookTime: 'normal',
+            social: 'rare',
+            daysPerWeek: 4,
+            equipment: 'gym',
+            duration: '60 min',
+            injuries: 'none',
+            diet: 'omnivore',
+            meals: 4,
+            intolerance: 'none',
+            digestion: 'normal',
+            supplements: 'essential',
+            customNotes: '',
+            aiConstraints: []
+        };
+
+        let currentStep = 1;
+        const totalSteps = 6;
+        let plainTextReport = '';
+        let lastChartData = null;
+
+        function setMonochromeTheme(mode) {
+            const root = document.documentElement;
+            const btnDark = document.getElementById('btn-theme-dark');
+            const btnLight = document.getElementById('btn-theme-light');
+
+            if (mode === 'light') {
+                root.classList.add('theme-light');
+                btnLight.classList.add('bg-accent', 'text-accentink', 'font-bold');
+                btnLight.classList.remove('text-muted');
+                btnDark.classList.remove('bg-accent', 'text-accentink', 'font-bold');
+                btnDark.classList.add('text-muted');
+            } else {
+                root.classList.remove('theme-light');
+                btnDark.classList.add('bg-accent', 'text-accentink', 'font-bold');
+                btnDark.classList.remove('text-muted');
+                btnLight.classList.remove('bg-accent', 'text-accentink', 'font-bold');
+                btnLight.classList.add('text-muted');
+            }
+
+            if (lastChartData) {
+                renderMacroSVG(lastChartData.pPct, lastChartData.cPct, lastChartData.fPct, lastChartData.totalKcal);
+            }
+        }
+
+        const stepTitles = {
+            1: { tag: 'MODULE 01 // BIOMÉTRIE', title: 'Mensurations & Composition' },
+            2: { tag: 'MODULE 02 // ANATOMIE', title: 'Morphologie & Priorités Musculaires' },
+            3: { tag: 'MODULE 03 // SITUATION DE VIE', title: 'Rythme Quotidien, Sommeil & Budget' },
+            4: { tag: 'MODULE 04 // BIOMÉCANIQUE', title: 'Logistique & Contraintes Physiques' },
+            5: { tag: 'MODULE 05 // NUTRITION', title: 'Alimentation & Métabolisme' },
+            6: { tag: 'MODULE 06 // ANALYSE IA', title: 'Handicaps, Pathologies & Précisions' }
+        };
+
+        function startWithGoal(goal) {
+            state.goal = goal;
+            if (goal === 'bulk') state.targetWeight = Math.min(170, state.weight + 4);
+            else if (goal === 'cut') state.targetWeight = Math.max(38, state.weight - 5);
+            else state.targetWeight = state.weight;
+
+            document.getElementById('in-targetWeight').value = state.targetWeight;
+            document.getElementById('disp-targetWeight').textContent = state.targetWeight;
+
+            document.getElementById('view-hero').classList.add('hidden');
+            document.getElementById('view-wizard').classList.remove('hidden');
+            document.getElementById('header-step-badge').classList.remove('hidden');
+            document.getElementById('header-status').textContent = 'DIAGNOSTIC EN COURS';
+            syncWizardUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateRange(key, val) {
+            state[key] = parseFloat(val);
+            document.getElementById('disp-' + key).textContent = val;
+        }
+
+        function selectOption(key, val, el) {
+            state[key] = val;
+            document.querySelectorAll('.opt-' + key).forEach(btn => btn.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function toggleMultiOption(key, val, el, max) {
+            const idx = state[key].indexOf(val);
+            if (idx > -1) {
+                if (state[key].length > 1) {
+                    state[key].splice(idx, 1);
+                    el.classList.remove('selected');
+                }
+            } else {
+                if (state[key].length >= max) {
+                    state[key].shift();
+                }
+                state[key].push(val);
+                document.querySelectorAll('.multi-' + key).forEach(btn => {
+                    const attr = btn.getAttribute('onclick');
+                    const active = state[key].some(item => attr.includes("'" + item + "'"));
+                    btn.classList.toggle('selected', active);
+                });
+            }
+        }
+
+        function syncWizardUI() {
+            for (let i = 1; i <= totalSteps; i++) {
+                document.getElementById('step-' + i).classList.add('hidden');
+            }
+            const panel = document.getElementById('step-' + currentStep);
+            panel.classList.remove('hidden');
+            panel.classList.remove('step-animate');
+            void panel.offsetWidth;
+            panel.classList.add('step-animate');
+
+            document.getElementById('wizard-tag').textContent = stepTitles[currentStep].tag;
+            document.getElementById('wizard-title').textContent = stepTitles[currentStep].title;
+            document.getElementById('header-step-num').textContent = '0' + currentStep;
+
+            const pct = Math.round((currentStep / totalSteps) * 100);
+            document.getElementById('wizard-pct').textContent = pct + '%';
+            document.getElementById('wizard-progress').style.width = pct + '%';
+
+            document.getElementById('btn-next-text').textContent =
+                currentStep === totalSteps ? 'Générer le Bilan Final' : 'Continuer';
+        }
+
+        async function nextStep() {
+            if (currentStep === 4) {
+                state.injuries = document.getElementById('in-injuries').value;
+            }
+            if (currentStep === 5) {
+                state.intolerance = document.getElementById('in-intolerance').value;
+                state.digestion = document.getElementById('in-digestion').value;
+                state.supplements = document.getElementById('in-supplements').value;
+            }
+            if (currentStep === 6) {
+                state.customNotes = document.getElementById('in-customNotes').value.trim();
+                if (state.customNotes.length > 3 && state.aiConstraints.length === 0) {
+                    await analyzeCustomNotesWithAI(true);
+                }
+                startCompilation();
+                return;
+            }
+
+            currentStep++;
+            syncWizardUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                syncWizardUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                resetApp();
+            }
+        }
+
+        function resetApp() {
+            currentStep = 1;
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-wizard').classList.add('hidden');
+            document.getElementById('view-compiling').classList.add('hidden');
+            document.getElementById('header-step-badge').classList.add('hidden');
+            document.getElementById('view-hero').classList.remove('hidden');
+            document.getElementById('header-status').textContent = 'SYSTÈME PRÊT';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function fillSampleNote(text) {
+            const area = document.getElementById('in-customNotes');
+            area.value = text;
+            state.customNotes = text;
+            state.aiConstraints = [];
+        }
+
+        function clearExtractedConstraints() {
+            state.aiConstraints = [];
+            document.getElementById('ai-extracted-box').classList.add('hidden');
+            document.getElementById('ai-tags-container').innerHTML = '';
+            document.getElementById('ai-status-msg').textContent = 'Liste réinitialisée.';
+        }
+
+        async function analyzeCustomNotesWithAI(silentMode) {
+            const rawText = document.getElementById('in-customNotes').value.trim();
+            state.customNotes = rawText;
+
+            if (!rawText) {
+                if (!silentMode) {
+                    document.getElementById('ai-status-msg').textContent = 'Veuillez saisir une précision médicale ou personnelle avant l’analyse.';
+                }
+                return;
+            }
+
+            const btn = document.getElementById('btn-analyze-ai');
+            const spinner = document.getElementById('ai-btn-spinner');
+            const btnText = document.getElementById('ai-btn-text');
+            const statusMsg = document.getElementById('ai-status-msg');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Analyse sémantique en cours...';
+            statusMsg.textContent = 'Extraction des contraintes biomécaniques et médicales...';
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const systemPrompt = "Tu es un ingénieur biomécanique et nutritionniste clinique. Analyse le texte libre de l'utilisateur décrivant son handicap, sa pathologie ou sa situation particulière. Extrais uniquement les adaptations concrètes nécessaires pour son programme sportif et nutritionnel.";
+
+            const payload = {
+                contents: [{ parts: [{ text: `Texte utilisateur : "${rawText}"` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            constraints: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        code: {
+                                            type: "STRING",
+                                            enum: [
+                                                "WHEELCHAIR_UPPER_ONLY",
+                                                "NO_AXIAL_SPINE_LOAD",
+                                                "NO_LOWER_BODY_IMPACT",
+                                                "UNILATERAL_ADAPTATION",
+                                                "SHOULDER_PROTECTION",
+                                                "LOW_GLYCEMIC_CONTROL",
+                                                "EXTENDED_REST_RESPIRATORY",
+                                                "CARDIO_HR_CAP",
+                                                "POSTPARTUM_CORE_SAFE",
+                                                "CUSTOM_MEDICAL_CARE"
+                                            ]
+                                        },
+                                        label: { type: "STRING" },
+                                        action: { type: "STRING" }
+                                    },
+                                    required: ["code", "label", "action"]
+                                }
+                            },
+                            summary: { type: "STRING" }
+                        },
+                        required: ["constraints", "summary"]
+                    }
+                }
+            };
+
+            let parsedResult = null;
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (textOut) {
+                            parsedResult = JSON.parse(textOut);
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 600));
+                }
+            }
+
+            if (!parsedResult || !Array.isArray(parsedResult.constraints) || parsedResult.constraints.length === 0) {
+                parsedResult = localSemanticFallback(rawText);
+            }
+
+            state.aiConstraints = parsedResult.constraints;
+            renderExtractedConstraints(parsedResult.constraints, parsedResult.summary);
+
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            btnText.textContent = 'Actualiser l’analyse IA';
+            statusMsg.textContent = `${parsedResult.constraints.length} paramètre(s) intégré(s) au moteur.`;
+        }
+
+        function localSemanticFallback(text) {
+            const lower = text.toLowerCase();
+            const constraints = [];
+
+            if (lower.includes('fauteuil') || lower.includes('paraplég') || lower.includes('jambe') || lower.includes('amput')) {
+                constraints.push({
+                    code: 'WHEELCHAIR_UPPER_ONLY',
+                    label: 'Adaptation Fauteuil / Haut du Corps',
+                    action: 'Suppression des exercices debout/jambes et transfert complet sur mouvements assis stables.'
+                });
+            }
+            if (lower.includes('hernie') || lower.includes('scoliose') || lower.includes('dos') || lower.includes('lombaire') || lower.includes('vertèbre')) {
+                constraints.push({
+                    code: 'NO_AXIAL_SPINE_LOAD',
+                    label: 'Décharge Axiale Vertébrale',
+                    action: 'Remplacement des charges verticales sur la colonne par des appuis thoraciques et machines guidées.'
+                });
+            }
+            if (lower.includes('épaule') || lower.includes('coiffe')) {
+                constraints.push({
+                    code: 'SHOULDER_PROTECTION',
+                    label: 'Protection Articulaire Épaule',
+                    action: 'Prise neutre privilégiée et angles de poussée contrôlés sans stress acromial.'
+                });
+            }
+            if (lower.includes('diabète') || lower.includes('glycém') || lower.includes('insuline')) {
+                constraints.push({
+                    code: 'LOW_GLYCEMIC_CONTROL',
+                    label: 'Contrôle Glycémique Strict',
+                    action: 'Priorité aux glucides complexes à index glycémique bas et fibres à chaque repas.'
+                });
+            }
+            if (lower.includes('asthme') || lower.includes('respir') || lower.includes('souffle')) {
+                constraints.push({
+                    code: 'EXTENDED_REST_RESPIRATORY',
+                    label: 'Gestion Respiratoire & Repos',
+                    action: 'Allongement des temps de récupération (+30s) et suppression des supersets épuisants.'
+                });
+            }
+            if (lower.includes('tension') || lower.includes('hypertension') || lower.includes('coeur') || lower.includes('cardiaque')) {
+                constraints.push({
+                    code: 'CARDIO_HR_CAP',
+                    label: 'Contrôle Tensionnel (Sans Valsalva)',
+                    action: 'Respiration fluide continue sur chaque répétition, charges modérées sans blocage respiratoire.'
+                });
+            }
+            if (lower.includes('grossesse') || lower.includes('enceinte') || lower.includes('post-partum') || lower.includes('accouch')) {
+                constraints.push({
+                    code: 'POSTPARTUM_CORE_SAFE',
+                    label: 'Protection Sangle Abdominale / Périnée',
+                    action: 'Travail transverse hypopressif et suppression des crunchs classiques.'
+                });
+            }
+            if (constraints.length === 0) {
+                constraints.push({
+                    code: 'CUSTOM_MEDICAL_CARE',
+                    label: 'Précaution Personnalisée Enregistrée',
+                    action: `Adaptation prise en compte : "${text.slice(0, 90)}${text.length > 90 ? '...' : ''}"`
+                });
+            }
+
+            return {
+                constraints,
+                summary: 'Les contraintes détectées ont été traduites en règles biomécaniques et nutritionnelles actives pour votre bilan.'
+            };
+        }
+
+        function renderExtractedConstraints(list, summary) {
+            const box = document.getElementById('ai-extracted-box');
+            const container = document.getElementById('ai-tags-container');
+            const summaryEl = document.getElementById('ai-summary-note');
+
+            container.innerHTML = list.map(c => `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent text-accentink font-mono text-xs font-semibold">
+                    <span>+ ${c.label}</span>
+                </span>
+            `).join('');
+
+            summaryEl.textContent = summary;
+            box.classList.remove('hidden');
+        }
+
+        function startCompilation() {
+            document.getElementById('view-wizard').classList.add('hidden');
+            document.getElementById('header-step-badge').classList.add('hidden');
+            document.getElementById('view-compiling').classList.remove('hidden');
+            document.getElementById('header-status').textContent = 'COMPILATION DU BILAN';
+
+            const steps = [
+                { pct: 30, text: 'CALCUL DU MÉTABOLISME BASAL & DÉPENSE PROFESSIONNELLE...' },
+                { pct: 65, text: 'APPLICATION DES CONTRAINTES ANATOMIQUES & MÉDICALES...' },
+                { pct: 100, text: 'CALIBRATION NUTRITIONNELLE & GÉNÉRATION DU DOSSIER...' }
+            ];
+
+            steps.forEach((s, index) => {
+                setTimeout(() => {
+                    document.getElementById('compile-bar').style.width = s.pct + '%';
+                    document.getElementById('compile-step-label').textContent = s.text;
+                }, index * 450);
+            });
+
+            setTimeout(() => {
+                buildFullResults();
+                document.getElementById('view-compiling').classList.add('hidden');
+                document.getElementById('view-results').classList.remove('hidden');
+                document.getElementById('header-status').textContent = 'BILAN TERMINÉ';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 1500);
+        }
+
+        function hasConstraint(code) {
+            return state.aiConstraints.some(c => c.code === code);
+        }
+
+        function buildFullResults() {
+            let bmr = (10 * state.weight) + (6.25 * state.height) - (5 * state.age) + (state.sex === 'male' ? 5 : -161);
+            if (state.anatomy === 'compact') bmr *= 1.03;
+            bmr = Math.round(bmr);
+
+            const jobMultipliers = { student: 1.32, desk: 1.24, physical: 1.52, shift: 1.35 };
+            let factor = jobMultipliers[state.job] + (state.daysPerWeek * 0.045);
+            if (hasConstraint('WHEELCHAIR_UPPER_ONLY')) {
+                factor -= 0.08;
+            }
+            const tdee = Math.round(bmr * factor);
+
+            let targetKcal = tdee;
+            let deltaStr = 'Maintenance iso-calorique';
+            let titleStr = 'PROTOCOLE RECOMPOSITION CORPORELLE';
+            let protPerKg = 2.0;
+            let fatPerKg = 0.9;
+
+            if (state.goal === 'bulk') {
+                const surplus = state.experience === 'beginner' ? 320 : 260;
+                targetKcal = tdee + surplus;
+                deltaStr = `+${surplus} kcal / jour (Surplus contrôlé)`;
+                titleStr = 'PROTOCOLE PRISE DE MASSE SÈCHE';
+                protPerKg = 2.0;
+                fatPerKg = 0.95;
+            } else if (state.goal === 'cut') {
+                const deficit = state.bodyfat === 'high' ? 500 : 420;
+                targetKcal = Math.max(bmr, tdee - deficit);
+                deltaStr = `-${tdee - targetKcal} kcal / jour (Déficit préservateur)`;
+                titleStr = 'PROTOCOLE SÈCHE & DÉFINITION';
+                protPerKg = 2.25;
+                fatPerKg = 0.8;
+            } else if (state.goal === 'strength') {
+                targetKcal = tdee + 180;
+                deltaStr = '+180 kcal / jour (Support neuromusculaire)';
+                titleStr = 'PROTOCOLE PERFORMANCE & FORCE';
+                protPerKg = 2.0;
+                fatPerKg = 1.0;
+            }
+
+            const protG = Math.round(state.weight * protPerKg);
+            const protKcal = protG * 4;
+            const fatG = Math.round(state.weight * fatPerKg);
+            const fatKcal = fatG * 9;
+            const carbKcal = Math.max(180, targetKcal - protKcal - fatKcal);
+            const carbG = Math.round(carbKcal / 4);
+
+            const protPct = Math.round((protKcal / targetKcal) * 100);
+            const fatPct = Math.round((fatKcal / targetKcal) * 100);
+            const carbPct = Math.max(5, 100 - protPct - fatPct);
+
+            const water = ((state.weight * 0.035) + (state.daysPerWeek * 0.12)).toFixed(1);
+            const diff = Math.abs(state.targetWeight - state.weight);
+            const weeks = diff === 0 ? 12 : Math.max(6, Math.round(diff / (state.goal === 'cut' ? 0.45 : 0.3)));
+
+            document.getElementById('res-title').textContent = titleStr;
+            document.getElementById('res-subtitle').textContent =
+                `${state.sex === 'male' ? 'HOMME' : 'FEMME'} • ${state.age} ANS • ${state.height} CM • ${state.weight} KG → CIBLE ${state.targetWeight} KG • TOUR DE TAILLE ${state.waist} CM`;
+
+            document.getElementById('res-bmr').textContent = bmr.toLocaleString('fr-FR') + ' kcal';
+            document.getElementById('res-tdee').textContent = tdee.toLocaleString('fr-FR') + ' kcal';
+            document.getElementById('res-target').textContent = targetKcal.toLocaleString('fr-FR') + ' kcal';
+            document.getElementById('res-delta').textContent = deltaStr;
+            document.getElementById('res-water').textContent = water + ' L/j';
+            document.getElementById('res-horizon').textContent = `Cycle estimé : ${weeks} semaines`;
+
+            document.getElementById('res-prot-g').textContent = protG + 'g';
+            document.getElementById('res-prot-meta').textContent = `${protPerKg.toFixed(1)} g/kg • ${protKcal} kcal (${protPct}%)`;
+
+            document.getElementById('res-carb-g').textContent = carbG + 'g';
+            document.getElementById('res-carb-meta').textContent = `${(carbG / state.weight).toFixed(1)} g/kg • ${carbKcal} kcal (${carbPct}%)`;
+
+            document.getElementById('res-fat-g').textContent = fatG + 'g';
+            document.getElementById('res-fat-meta').textContent = `${fatPerKg.toFixed(1)} g/kg • ${fatKcal} kcal (${fatPct}%)`;
+
+            lastChartData = { pPct: protPct, cPct: carbPct, fPct: fatPct, totalKcal: targetKcal };
+            renderMacroSVG(protPct, carbPct, fatPct, targetKcal);
+            renderAdaptationsBanner();
+            renderAdaptedWorkouts();
+            renderAdaptedNutrition(targetKcal, protG, carbG, fatG);
+            renderClinicalRecovery();
+
+            plainTextReport = `OGI LAB — ${titleStr}\n` +
+                `Profil : ${state.sex === 'male' ? 'Homme' : 'Femme'}, ${state.age} ans, ${state.height} cm, ${state.weight} kg -> Cible ${state.targetWeight} kg\n` +
+                `BMR : ${bmr} kcal | TDEE : ${tdee} kcal | Cible : ${targetKcal} kcal\n` +
+                `Macros : ${protG}g Protéines / ${carbG}g Glucides / ${fatG}g Lipides | Eau : ${water} L/j\n` +
+                `Adaptations actives : ${state.aiConstraints.map(c => c.label).join(', ') || 'Standard'}`;
+        }
+
+        function renderMacroSVG(pPct, cPct, fPct, totalKcal) {
+            const svg = document.getElementById('macro-donut-svg');
+            const styles = getComputedStyle(document.documentElement);
+            const trackColor = styles.getPropertyValue('--chart-track').trim() || '#27272a';
+            const c1 = styles.getPropertyValue('--chart-s1').trim() || '#fafafa';
+            const c2 = styles.getPropertyValue('--chart-s2').trim() || '#a1a1aa';
+            const c3 = styles.getPropertyValue('--chart-s3').trim() || '#52525b';
+            const textPrimary = styles.getPropertyValue('--text-primary').trim() || '#fafafa';
+            const textMuted = styles.getPropertyValue('--text-muted').trim() || '#a1a1aa';
+
+            const radius = 58;
+            const circumference = 2 * Math.PI * radius;
+
+            const pLen = (pPct / 100) * circumference;
+            const cLen = (cPct / 100) * circumference;
+            const fLen = (fPct / 100) * circumference;
+
+            const pOffset = 0;
+            const cOffset = -pLen;
+            const fOffset = -(pLen + cLen);
+
+            svg.innerHTML = `
+                <circle cx="80" cy="80" r="${radius}" fill="none" stroke="${trackColor}" stroke-width="14"></circle>
+                <circle cx="80" cy="80" r="${radius}" fill="none" stroke="${c1}" stroke-width="14"
+                    stroke-dasharray="${pLen} ${circumference}" stroke-dashoffset="${pOffset}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="${radius}" fill="none" stroke="${c2}" stroke-width="14"
+                    stroke-dasharray="${cLen} ${circumference}" stroke-dashoffset="${cOffset}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="${radius}" fill="none" stroke="${c3}" stroke-width="14"
+                    stroke-dasharray="${fLen} ${circumference}" stroke-dashoffset="${fOffset}" transform="rotate(-90 80 80)"></circle>
+                <text x="80" y="76" text-anchor="middle" fill="${textPrimary}" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="18">${totalKcal}</text>
+                <text x="80" y="94" text-anchor="middle" fill="${textMuted}" font-family="JetBrains Mono, monospace" font-size="9">KCAL / JOUR</text>
+            `;
+        }
+
+        function renderAdaptationsBanner() {
+            const jobNames = { student: 'ÉTUDIANT', desk: 'BUREAU / TÉLÉTRAVAIL', physical: 'MÉTIER PHYSIQUE', shift: 'HORAIRES DÉCALÉS' };
+            const budgetNames = { tight: 'BUDGET SERRÉ', medium: 'BUDGET MOYEN', high: 'BUDGET CONFORT' };
+            const cookNames = { fast: 'CUISINE < 15 MIN', normal: 'CUISINE 30 MIN', batch: 'MEAL PREP' };
+
+            document.getElementById('res-life-context').textContent =
+                `${jobNames[state.job]} • ${budgetNames[state.budget]} • ${cookNames[state.cookTime]}`;
+
+            const container = document.getElementById('res-active-constraints');
+            const badges = [];
+
+            if (state.injuries !== 'none') {
+                const injLabels = { shoulders: 'Protection Épaules', lowerback: 'Protection Lombaires', knees: 'Protection Genoux', wrists: 'Protection Poignets' };
+                badges.push({ title: injLabels[state.injuries], detail: 'Exercices substitués' });
+            }
+
+            state.aiConstraints.forEach(c => {
+                badges.push({ title: c.label, detail: c.action });
+            });
+
+            if (badges.length === 0) {
+                container.innerHTML = `<span class="font-mono text-xs text-muted">Aucune restriction médicale particulière — programmation biomécanique standard optimisée.</span>`;
+                return;
+            }
+
+            container.innerHTML = badges.map(b => `
+                <div class="px-3.5 py-2 rounded-xl bg-canvas border border-borderline text-xs">
+                    <div class="font-mono font-bold text-ink uppercase">${b.title}</div>
+                    <div class="sub-text text-muted mt-0.5">${b.detail}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdaptedWorkouts() {
+            const container = document.getElementById('res-workouts');
+            container.innerHTML = '';
+
+            const wheelchair = hasConstraint('WHEELCHAIR_UPPER_ONLY');
+            const noSpineLoad = hasConstraint('NO_AXIAL_SPINE_LOAD') || state.injuries === 'lowerback';
+            const shoulderSafe = hasConstraint('SHOULDER_PROTECTION') || state.injuries === 'shoulders';
+            const kneeSafe = hasConstraint('NO_LOWER_BODY_IMPACT') || state.injuries === 'knees';
+            const respSafe = hasConstraint('EXTENDED_REST_RESPIRATORY');
+            const hrCap = hasConstraint('CARDIO_HR_CAP');
+            const coreSafe = hasConstraint('POSTPARTUM_CORE_SAFE');
+
+            const isGym = state.equipment === 'gym';
+            const isHome = state.equipment === 'homegym';
+
+            const baseRest = respSafe ? '3 min (Récupération respiratoire)' : (state.goal === 'strength' ? '3 min' : '2 min');
+            const isoRest = respSafe ? '2 min' : '90 sec';
+            const repTarget = hrCap ? '3 × 12-15 reps (Respiration fluide, sans blocage)' :
+                (state.goal === 'strength' ? '4 × 5-6 reps (RIR 1-2)' : '3-4 × 8-12 reps (RIR 1-2)');
+
+            document.getElementById('res-focus-badge').textContent =
+                `PRIORITÉS : ${state.weakPoints.join(' + ').toUpperCase()}`;
+
+            let days = [];
+
+            if (wheelchair) {
+                document.getElementById('res-split-title').textContent =
+                    `PROGRAMMATION ADAPTÉE HAUT DU CORPS (${state.daysPerWeek} JOURS)`;
+                days = [
+                    {
+                        title: 'SÉANCE A // POUSSÉE HORIZONTALE & STABILITÉ SCAPULAIRE',
+                        sub: 'Pectoraux, Deltoïde antérieur, Triceps (100% assis / calé)',
+                        list: [
+                            { name: shoulderSafe ? 'Presse convergente prise neutre (dossier calé)' : 'Développé poitrine machine convergente ou haltères assis', sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Écartés assis à la machine (Pec Deck)' : 'Écartés élastiques ancrés derrière le dossier', sets: '3 × 12-15 reps', rest: isoRest },
+                            { name: isGym ? 'Élévations latérales assis haltères ou poulie' : 'Élévations latérales assis élastique/haltères', sets: '4 × 12-15 reps', rest: isoRest },
+                            { name: isGym ? 'Extension triceps poulie haute corde' : 'Extension triceps au-dessus de la tête assis', sets: '3 × 12-15 reps', rest: isoRest }
+                        ]
+                    },
+                    {
+                        title: 'SÉANCE B // TIRAGE DORSAL & COIFFE DES ROTATEURS',
+                        sub: 'Grand dorsal, Trapèzes, Arrière d’épaule, Biceps',
+                        list: [
+                            { name: isGym ? 'Tirage horizontal assis poulie basse (prise neutre)' : 'Rowing assis avec bande de résistance ancrée', sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Tirage vertical poitrine poulie haute' : 'Tirage vertical élastique haute tension', sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Face Pull assis à la corde (Santé épaules)' : 'Oiseau assis buste penché haltères', sets: '4 × 15 reps', rest: isoRest },
+                            { name: 'Curl biceps assis prise marteau + supination', sets: '3 × 10-12 reps', rest: isoRest }
+                        ]
+                    }
+                ];
+                if (state.daysPerWeek >= 3) {
+                    days.push({
+                        title: 'SÉANCE C // VOLUME ÉPAULES, BRAS & GAINAGE TRONC',
+                        sub: `Focus prioritaire : ${state.weakPoints.join(', ')}`,
+                        list: [
+                            { name: shoulderSafe ? 'Développé haltères assis prise neutre (amplitude contrôlée)' : 'Développé militaire assis dossier vertical', sets: repTarget, rest: baseRest },
+                            { name: 'Tirage menton prise large assis ou Élévations latérales', sets: '4 × 12-15 reps', rest: isoRest },
+                            { name: 'Rotation du tronc assis (Obliques & stabilité)', sets: '3 × 15/côté', rest: '60 sec' },
+                            { name: 'Superset Curl pupitre + Barre au front assis', sets: '3 × 12 reps', rest: isoRest }
+                        ]
+                    });
+                }
+            } else {
+                const pressMove = shoulderSafe
+                    ? 'Développé couché haltères prise neutre (coudes à 45°)'
+                    : (isGym ? 'Développé incliné haltères ou machine convergente' : (isHome ? 'Développé couché haltères' : 'Pompes déclinées & Dips contrôlés'));
+
+                const pullMove = noSpineLoad
+                    ? (isGym ? 'Rowing poitrine en appui sur banc incliné (Chest-Supported)' : 'Rowing unilatéral avec main en appui sur banc')
+                    : (isGym ? 'Tirage vertical poulie haute + Rowing câble' : (isHome ? 'Tractions & Rowing haltères' : 'Tractions pronation & Rowing inversé'));
+
+                const legMove = noSpineLoad
+                    ? (isGym ? 'Presse à cuisses inclinée (dos plaqué)' : 'Fentes bulgares haltères (buste droit)')
+                    : (kneeSafe
+                        ? (isGym ? 'Hip Thrust barre & Leg Curl allongé' : 'Pont fessier unilatéral & Good Morning léger')
+                        : (isGym ? 'Squat barre ou Presse à cuisses' : (isHome ? 'Goblet Squat lourd & Fentes' : 'Squats bulgares')));
+
+                const coreMove = coreSafe
+                    ? 'Respiration transverse hypopressive & Dead-Bug lent'
+                    : (isGym ? 'Crunch poulie haute ou Relevés de jambes' : 'Gainage planche lesté');
+
+                document.getElementById('res-split-title').textContent =
+                    state.daysPerWeek <= 3
+                        ? `SPLIT FULL-BODY CALIBRÉ (${state.daysPerWeek} JOURS)`
+                        : `SPLIT UPPER / LOWER HYPERTROPHIE (${state.daysPerWeek} JOURS)`;
+
+                days = [
+                    {
+                        title: 'SÉANCE 01 // HAUT DU CORPS A (DOMINANTE POUSSÉE)',
+                        sub: 'Pectoraux, Deltoïdes, Dos, Triceps',
+                        list: [
+                            { name: pressMove, sets: repTarget, rest: baseRest },
+                            { name: pullMove, sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Élévations latérales poulie basse' : 'Élévations latérales haltères/élastique', sets: '4 × 12-15 reps', rest: isoRest },
+                            { name: isGym ? 'Extension triceps poulie corde' : 'Extension nuque haltère', sets: '3 × 12-15 reps', rest: isoRest }
+                        ]
+                    },
+                    {
+                        title: 'SÉANCE 02 // BAS DU CORPS A (QUADRICEPS & GAINAGE)',
+                        sub: 'Membres inférieurs & Sangle abdominale',
+                        list: [
+                            { name: legMove, sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Leg Curl assis (Ischio-jambiers)' : 'Glute Bridge glissé au sol', sets: '3 × 10-12 reps', rest: isoRest },
+                            { name: 'Mollets debout (pause 2s en étirement)', sets: '4 × 12-15 reps', rest: '60 sec' },
+                            { name: coreMove, sets: '3 × 12-15 reps', rest: '60 sec' }
+                        ]
+                    }
+                ];
+
+                if (state.daysPerWeek >= 3) {
+                    days.push({
+                        title: 'SÉANCE 03 // HAUT DU CORPS B (DOMINANTE TIRAGE & BRAS)',
+                        sub: `Focus : ${state.weakPoints.join(', ')}`,
+                        list: [
+                            { name: isGym ? 'Tirage vertical prise large' : 'Tractions ou Tirage élastique haut', sets: repTarget, rest: baseRest },
+                            { name: shoulderSafe ? 'Élévations latérales + Oiseau banc incliné' : (isGym ? 'Développé militaire haltères' : 'Pike Push-ups'), sets: repTarget, rest: baseRest },
+                            { name: isGym ? 'Face Pull poulie haute' : 'Oiseau buste penché', sets: '3 × 15 reps', rest: isoRest },
+                            { name: 'Curl incliné haltères + Curl marteau', sets: '4 × 10-12 reps', rest: isoRest }
+                        ]
+                    });
+                }
+
+                if (state.daysPerWeek >= 4) {
+                    days.push({
+                        title: 'SÉANCE 04 // BAS DU CORPS B (CHAÎNE POSTÉRIEURE)',
+                        sub: 'Ischios, Fessiers & Rappel Points Faibles',
+                        list: [
+                            { name: noSpineLoad ? (isGym ? 'Hip Thrust machine/barre (dos calé)' : 'Hip Thrust unilatéral') : (isGym ? 'Soulevé de terre roumain' : 'Soulevé de terre jambes tendues haltères'), sets: repTarget, rest: baseRest },
+                            { name: kneeSafe ? 'Leg Curl allongé (contrôle excentrique)' : 'Fentes bulgares contrôlées', sets: '3 × 10-12 reps', rest: baseRest },
+                            { name: `Isolation prioritaire : ${state.weakPoints[0] || 'Épaules 3D'}`, sets: '4 × 12-15 reps', rest: isoRest },
+                            { name: coreMove, sets: '3 × 15 reps', rest: '60 sec' }
+                        ]
+                    });
+                }
+            }
+
+            days.forEach(d => {
+                const rows = d.list.map(ex => `
+                    <div class="flex items-center justify-between py-2.5 border-b border-borderline last:border-0 text-sm">
+                        <div class="pr-3">
+                            <div class="font-medium text-ink">${ex.name}</div>
+                            <div class="font-mono text-[11px] sub-text text-muted">${ex.sets}</div>
+                        </div>
+                        <span class="font-mono text-[11px] px-2.5 py-1 rounded bg-canvas border border-borderline text-muted whitespace-nowrap">${ex.rest}</span>
+                    </div>
+                `).join('');
+
+                container.innerHTML += `
+                    <div class="panel p-6 rounded-2xl">
+                        <div class="font-mono text-xs text-ink font-bold uppercase mb-1">${d.title}</div>
+                        <div class="text-xs sub-text text-muted mb-4 pb-3 border-b border-borderline">${d.sub}</div>
+                        <div>${rows}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderAdaptedNutrition(totalKcal, pG, cG, fG) {
+            const container = document.getElementById('res-meals');
+            container.innerHTML = '';
+
+            const dietLabels = {
+                omnivore: 'OMNIVORE',
+                halal_kosher: 'HALAL / CASHER',
+                pescatarian: 'PESCÉTARIEN',
+                vegetarian: 'VÉGÉTARIEN',
+                vegan: '100% VÉGÉTAL'
+            };
+            document.getElementById('res-diet-tag').textContent = dietLabels[state.diet];
+            document.getElementById('res-meals-heading').textContent = `${state.meals} Repas Calibrés / Jour`;
+
+            const lowGI = hasConstraint('LOW_GLYCEMIC_CONTROL');
+            const noLactose = state.intolerance === 'lactose' || state.intolerance === 'both';
+            const noGluten = state.intolerance === 'gluten' || state.intolerance === 'both';
+            const noEggs = state.intolerance === 'eggs';
+            const noNuts = state.intolerance === 'nuts';
+
+            const carbSource = lowGI
+                ? 'Sarrasin, Quinoa, Lentilles ou Patate douce (Index Glycémique Bas)'
+                : (noGluten ? 'Riz basmati, Patate douce ou Sarrasin' : 'Riz basmati, Avoine complète ou Pâtes complètes');
+
+            const fatSource = noNuts
+                ? 'Huile d’olive vierge, Avocat ou Graines de courge'
+                : 'Amandes, Noix, Avocat ou Huile d’olive vierge';
+
+            let protMorning = 'Œufs entiers + Skyr 0%';
+            if (state.diet === 'vegan') protMorning = 'Isolat végétal pois/riz + Graines de chia';
+            else if (noEggs && noLactose) protMorning = 'Blanc de dinde / Poulet froid ou Tofu soyeux';
+            else if (noEggs) protMorning = 'Fromage blanc 0% / Skyr + Whey Isolat';
+            else if (noLactose) protMorning = 'Œufs entiers brouillés + Blancs d’œufs';
+
+            let protMain = 'Blanc de poulet, Dinde ou Bœuf maigre 5%';
+            if (state.diet === 'halal_kosher') protMain = 'Poulet certifié, Dinde, Bœuf maigre ou Filet de colin';
+            else if (state.diet === 'pescatarian') protMain = 'Saumon, Cabillaud, Thon ou Crevettes';
+            else if (state.diet === 'vegetarian') protMain = noEggs ? 'Tofu ferme, Tempeh et Skyr' : 'Œufs bio, Tofu ferme et Halloumi léger';
+            else if (state.diet === 'vegan') protMain = 'Tofu fumé, Tempeh et Protéines de soja texturées';
+
+            const cookTip = state.cookTime === 'fast'
+                ? ' (Assemblage express < 10 min : surgelés nature, œufs, conserves sans additifs)'
+                : (state.cookTime === 'batch' ? ' (Préparable en lot le dimanche pour 3 jours)' : '');
+
+            const schedules = {
+                2: [
+                    { name: 'REPAS 01 // RUPTURE DE JEÛNE (12H30)', pct: 0.50, desc: `${protMain} + ${carbSource} + Légumes verts + ${fatSource}${cookTip}.` },
+                    { name: 'REPAS 02 // DÎNER DE RÉCUPÉRATION (20H00)', pct: 0.50, desc: `${protMorning} ou ${protMain} + ${carbSource} + Crudités & Huile de colza/olive.` }
+                ],
+                3: [
+                    { name: 'REPAS 01 // PETIT-DÉJEUNER', pct: 0.30, desc: `${protMorning} + ${lowGI ? 'Flocons de sarrasin' : (noGluten ? 'Galettes de sarrasin' : 'Flocons d’avoine')} + ${fatSource}.` },
+                    { name: 'REPAS 02 // DÉJEUNER', pct: 0.40, desc: `${protMain} + ${carbSource} + Légumes vapeur${cookTip}.` },
+                    { name: 'REPAS 03 // DÎNER', pct: 0.30, desc: `${protMain} + Légumes riches en fibres + Portion modérée de ${carbSource}.` }
+                ],
+                4: [
+                    { name: 'REPAS 01 // PETIT-DÉJEUNER', pct: 0.25, desc: `${protMorning} + ${lowGI ? 'Pain intégral au levain / Sarrasin' : (noGluten ? 'Flocons de sarrasin' : 'Flocons d’avoine')}.` },
+                    { name: 'REPAS 02 // DÉJEUNER', pct: 0.32, desc: `${protMain} + ${carbSource} + Légumes verts + ${fatSource}${cookTip}.` },
+                    { name: 'REPAS 03 // COLLATION PÉRI-TRAINING', pct: 0.15, desc: `${state.diet === 'vegan' || noLactose ? 'Isolat Végétal' : 'Whey Isolat'} + ${lowGI ? 'Pomme ou Baies + Amandes' : '1 Banane mûre'}.` },
+                    { name: 'REPAS 04 // DÎNER', pct: 0.28, desc: `${protMain} + ${carbSource} + Légumes grillés.` }
+                ],
+                5: [
+                    { name: 'REPAS 01 // RÉVEIL', pct: 0.20, desc: `${protMorning} + ${noGluten ? 'Sarrasin' : 'Avoine'}.` },
+                    { name: 'REPAS 02 // COLLATION MATIN', pct: 0.12, desc: `${noLactose || state.diet === 'vegan' ? 'Yaourt soja enrichi' : 'Skyr 0%'} + ${fatSource}.` },
+                    { name: 'REPAS 03 // DÉJEUNER', pct: 0.28, desc: `${protMain} + ${carbSource} + Légumes verts${cookTip}.` },
+                    { name: 'REPAS 04 // POST-SÉANCE', pct: 0.15, desc: `${state.diet === 'vegan' || noLactose ? 'Protéine végétale' : 'Whey Isolat'} + Fruit frais.` },
+                    { name: 'REPAS 05 // DÎNER', pct: 0.25, desc: `${protMain} + Légumes + ${carbSource}.` }
+                ]
+            };
+
+            const chosenMeals = schedules[state.meals] || schedules[4];
+
+            chosenMeals.forEach(m => {
+                const mk = Math.round(totalKcal * m.pct);
+                const mp = Math.round(pG * m.pct);
+                const mc = Math.round(cG * m.pct);
+                const mf = Math.round(fG * m.pct);
+
+                container.innerHTML += `
+                    <div class="p-4 rounded-xl bg-canvas border border-borderline">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-1.5">
+                            <span class="font-mono text-xs font-bold text-ink">${m.name}</span>
+                            <span class="font-mono text-[11px] px-2.5 py-0.5 rounded bg-elevated text-ink">${mk} kcal • ${mp}g P / ${mc}g G / ${mf}g L</span>
+                        </div>
+                        <p class="text-xs sm:text-sm sub-text text-muted leading-relaxed">${m.desc}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function renderClinicalRecovery() {
+            const container = document.getElementById('res-supps');
+            container.innerHTML = '';
+
+            const items = [];
+
+            if (state.job === 'shift') {
+                items.push({
+                    title: 'Synchronisation Circadienne',
+                    tag: 'HORAIRES DÉCALÉS',
+                    desc: 'Conservez une fenêtre de jeûne nocturne régulière et exposez-vous à une lumière vive dès le réveil.'
+                });
+            }
+
+            if (state.supplements === 'minimal') {
+                items.push(
+                    { title: 'Sommeil Réparateur', tag: state.sleep + 'H / NUIT', desc: 'Chambre fraîche (18°C) et coupure des écrans 45 min avant le coucher.' },
+                    { title: 'Électrolytes & Sodium', tag: 'ALIMENTAIRE', desc: 'Assaisonnement modéré au sel marin iodé autour de l’entraînement.' }
+                );
+            } else {
+                items.push(
+                    { title: 'Créatine Monohydrate', tag: '5G / JOUR', desc: 'Soutient la resynthèse d’ATP, la force et la récupération neuromusculaire.' },
+                    { title: 'Oméga-3 EPA / DHA', tag: '2G / JOUR', desc: 'Protection articulaire, cardiovasculaire et sensibilité à l’insuline.' }
+                );
+                if (state.supplements === 'performance' || state.stress === 'high' || state.sleep < 7) {
+                    items.push({
+                        title: 'Magnésium Bisglycinate',
+                        tag: '300MG SOIR',
+                        desc: 'Réduit la tension nerveuse, le cortisol et améliore le sommeil profond.'
+                    });
+                }
+            }
+
+            container.innerHTML = items.map(i => `
+                <div class="p-3.5 rounded-xl bg-canvas border border-borderline">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-semibold text-sm text-ink">${i.title}</span>
+                        <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-accent text-accentink font-bold">${i.tag}</span>
+                    </div>
+                    <p class="text-xs sub-text text-muted leading-relaxed">${i.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function copyReport() {
+            const ta = document.createElement('textarea');
+            ta.value = plainTextReport;
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                const lbl = document.getElementById('copy-btn-label');
+                lbl.textContent = 'Copié ✓';
+                setTimeout(() => { lbl.textContent = 'Copier le Bilan'; }, 2000);
+            } catch (e) {}
+            document.body.removeChild(ta);
+        }
+    </script>
+</body>
+</html>
